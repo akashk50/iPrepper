@@ -1,0 +1,3 @@
+-r requirements.txt
+# Only used by the standalone ttkbootstrapTest.py UI experiment.
+ttkbootstrap>=1,<2
