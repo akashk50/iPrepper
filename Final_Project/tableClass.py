@@ -1,18 +1,18 @@
+import config
 import tkinter as tk
 from tkinter import ttk
-import boto3
 
 def fetch_dynamodb_data(table_name):
     # Setup AWS DynamoDB access
-    dynamodb = boto3.resource('dynamodb',  
-        aws_access_key_id="AKIAXYKJVWVOJM53ZFTL",
-        aws_secret_access_key= "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",
-        region_name='us-east-1')
+    dynamodb = config.dynamodb_resource()
     table = dynamodb.Table(table_name)
     response = table.scan()
 
-    # Return items if found
-    return response['Items']
+    items = response.get('Items', [])
+    while response.get('LastEvaluatedKey'):
+        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+        items.extend(response.get('Items', []))
+    return items
 
 class Table:
     def __init__(self, root, items):
@@ -123,7 +123,7 @@ def delete_entries(t, table):
 
 def filter_by_question(t, search):
     keyword = search
-    all_items = fetch_dynamodb_data("user_scores")  # Fetch items (either cached or anew)
+    all_items = fetch_dynamodb_data(config.DYNAMODB_TABLE)  # Fetch items (either cached or anew)
     filtered_items = [item for item in all_items if keyword.lower() in item['Question'].lower()]
     t.populate_table(filtered_items)
 
@@ -231,14 +231,11 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.configure(background='white')
     root.title("Table with Checkboxes from DynamoDB")
-    dynamodb = boto3.resource('dynamodb',  
-        aws_access_key_id="AKIAXYKJVWVOJM53ZFTL",
-        aws_secret_access_key= "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",
-        region_name='us-east-1')
-    table = dynamodb.Table('user_scores')
+    dynamodb = config.dynamodb_resource()
+    table = dynamodb.Table(config.DYNAMODB_TABLE)
 
     # Fetch data from DynamoDB
-    items = fetch_dynamodb_data('user_scores')
+    items = fetch_dynamodb_data(config.DYNAMODB_TABLE)
 
     # Create the table with fetched data
     t = Table(root, items)

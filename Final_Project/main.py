@@ -1,3 +1,4 @@
+import config
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -16,8 +17,6 @@ from deepface import DeepFace
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.font_manager import FontProperties
-from openai import OpenAI
-import boto3
 from functools import reduce
 from datetime import datetime
 from decimal import Decimal
@@ -28,27 +27,10 @@ app = tk.Tk()
 app.title("iPrepper")
 app.geometry('1600x900')
 
-import os
-import boto3
-from openai import OpenAI
-
-# Load keys from environment variables
-api_key = os.getenv("OPENAI_API_KEY")
-aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-aws_region = os.getenv("AWS_REGION", "us-east-1")  # default if not set
-
-# Initialize OpenAI client
-openAIClient = OpenAI(api_key=api_key)
-
-# Initialize DynamoDB client
-dynamodb = boto3.resource(
-    'dynamodb',
-    aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region
-)
-dynamoTable = dynamodb.Table("user_scores")
+# Credentials are read only when the application is launched.
+openAIClient = config.openai_client()
+dynamodb = config.dynamodb_resource()
+dynamoTable = dynamodb.Table(config.DYNAMODB_TABLE)
 
 menu_frame = tk.Frame(app, bg='#2f3d44')
 main_frame = tk.Frame(app, bg='white')
@@ -85,7 +67,7 @@ style.configure('MenuButton.TButton', background = '#2f3d44', foreground = '#C8C
 style.map('MenuButton.TButton', foreground=[('active','white')], background=[('active','#2f3d44')])
 
 
-items = tab.fetch_dynamodb_data('user_scores')
+items = tab.fetch_dynamodb_data(config.DYNAMODB_TABLE)
 
     # Create the table with fetched data
 t = tab.Table(analytics_frame, items)
@@ -97,14 +79,7 @@ interview_prep_header = ttk.Button(header_frame, style = 'MenuButton.TButton', c
 interview_prep_header.place(x=900, y=20, width=77, height=40)
 
 
-dynamodb = boto3.resource('dynamodb',  
-        aws_access_key_id="AKIAXYKJVWVOJM53ZFTL",
-        aws_secret_access_key= "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",
-        region_name='us-east-1')
-table = dynamodb.Table('user_scores')
-
-# Fetch data from DynamoDB
-items = tab.fetch_dynamodb_data('user_scores')
+table = dynamoTable
 
 # Create the table with fetched data
 buttons = tk.Frame(analytics_frame, background='white')
@@ -167,7 +142,7 @@ sample_format = pyaudio.paInt16
 channels = 1
 fs = 16000  # Record at 16000 samples per second
 chunk = 1024  # Record in chunks of 1024 samples
-recognizer = KaldiRecognizer(Model("/Users/akashkhanna/Downloads/vosk-model-en-us-0.42-gigaspeech"), fs)
+recognizer = KaldiRecognizer(Model(str(config.vosk_model_path())), fs)
 
 def capture_audio():
     p = pyaudio.PyAudio()  # Create an interface to PortAudio
@@ -226,7 +201,7 @@ feedback_label = tk.Label(feedback_frame, text="feedbackText", background='#2f3d
 
 def create_chart(feedback_frame):
     # Data for plotting
-    font = FontProperties(fname='/Users/akashkhanna/Downloads/Quicksand/static/Quicksand-Medium.ttf')
+    font = FontProperties(family='sans-serif')
     values = []
     mylabels = []
     colors = colors = [
@@ -278,12 +253,12 @@ results_listbox = tk.Listbox(menu_frame)
 
 
 # OpenCV video capture
-cap = cv2.VideoCapture(0)  # Use 0 for the default camera
+cap = cv2.VideoCapture(config.camera_index())  # Use 0 for the default camera
 
 custom_font = font.Font(family='Quicksand', size=32, weight='normal')
 
-logoimg = Image.open('logo.png')
-resized = logoimg.resize((50, 50), Image.LANCZOS)
+logoimg = Image.open(config.asset_path('logo.ppm'))
+resized = logoimg.resize((50, 50), Image.Resampling.LANCZOS)
 tkimg = ImageTk.PhotoImage(resized)
 label1 = tk.Label(menu_frame, image = tkimg, bg='#2f3d44')
 label1.place(x=5,y=10, width=50, height=50)
@@ -345,8 +320,8 @@ def perform_search():
     print(diffVal)
     def query_db():
         regex_pattern = {'$regex': search_query, '$options': 'i'}
-        client = MongoClient('localhost', 27017)
-        db = client['dsci351-project']
+        client = MongoClient(config.MONGODB_URI)
+        db = client[config.MONGODB_DATABASE]
         questions = db.questions
         try:
             documents = questions.find({"Question": regex_pattern, "Difficulty": diffVal})
@@ -413,7 +388,7 @@ def stop_action(event):
         userContent = f"Question: {question}\nAnswer: {answer}"
         print(userContent)
         response = openAIClient.chat.completions.create(
-                model="gpt-3.5-turbo-0125",
+                model=config.OPENAI_MODEL,
                 messages=[
                     {
                     "role": "system",
@@ -452,16 +427,12 @@ def stop_action(event):
 
 playPauseFrame = tk.Frame(main_frame, bg='#2f3d44')
 playPauseFrame.place(y=690, x=26, width=960, height=100)
-play_image_pil = Image.open("play.png").resize((50, 50), Image.Resampling.LANCZOS)
-stop_image_pil = Image.open("stop.png").resize((50, 50), Image.Resampling.LANCZOS)
-play_image = ImageTk.PhotoImage(play_image_pil)
-stop_image = ImageTk.PhotoImage(stop_image_pil)
-
-playButton = tk.Label(main_frame, image=play_image, bg='#2f3d44')
+# The original play/stop PNGs were not included; use text controls.
+playButton = tk.Label(main_frame, text="▶", font=('Arial', 32), bg='#2f3d44', fg='white')
 playButton.place(x=450, y=700)
 playButton.bind("<Button-1>", play_action)
 
-stopButton = tk.Label(main_frame, image=stop_image, bg='#2f3d44')
+stopButton = tk.Label(main_frame, text='■', font=('Arial', 32), bg='#2f3d44', fg='white')
 stopButton.place(x=550, y=700)
 stopButton.bind("<Button-1>", stop_action)
 

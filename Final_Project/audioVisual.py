@@ -1,3 +1,4 @@
+import config
 from tkinter import *
 import cv2
 from PIL import Image, ImageTk
@@ -8,11 +9,9 @@ import json
 import queue
 from deepface import DeepFace
 import time
-from openai import OpenAI
 
 
-api_key = "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"
-client = OpenAI(api_key=api_key)
+client = config.openai_client()
 
 # Define global variables for thread control
 playing = False
@@ -90,7 +89,7 @@ add_question_button = Button(bottom_bar, text="Add Question")
 add_question_button.pack(side='right', padx=10, pady=10)
 
 # Initialize video and audio systems
-vid = cv2.VideoCapture(1)
+vid = cv2.VideoCapture(config.camera_index())
 # Adjust the capture resolution
 vid.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 vid.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -99,7 +98,7 @@ sample_format = pyaudio.paInt16
 channels = 1
 fs = 16000  # Record at 16000 samples per second
 chunk = 1024  # Record in chunks of 1024 samples
-recognizer = KaldiRecognizer(Model("/Users/akashkhanna/Downloads/vosk-model-en-us-0.42-gigaspeech"), fs)
+recognizer = KaldiRecognizer(Model(str(config.vosk_model_path())), fs)
 
 video_queue = queue.Queue()
 audio_queue = queue.Queue()
@@ -219,7 +218,7 @@ def stop_recording():
     if playing:
         playing = False
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo-0125",
+            model=config.OPENAI_MODEL,
             messages=[
                 {
                 "role": "system",

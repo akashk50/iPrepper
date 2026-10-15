@@ -1,3 +1,4 @@
+import config
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -15,8 +16,6 @@ from deepface import DeepFace
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.font_manager import FontProperties
-from openai import OpenAI
-import boto3
 from functools import reduce
 from datetime import datetime
 from decimal import Decimal
@@ -29,14 +28,10 @@ app.geometry('1600x900')
 
 #  initialization for 
 
-api_key = "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"
-openAIClient = OpenAI(api_key=api_key)
+openAIClient = config.openai_client()
 
-dynamodb = boto3.resource('dynamodb',  
-    aws_access_key_id="AKIAXYKJVWVOJM53ZFTL",
-    aws_secret_access_key= "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",
-    region_name='us-east-1')
-dynamoTable = dynamodb.Table("user_scores")
+dynamodb = config.dynamodb_resource()
+dynamoTable = dynamodb.Table(config.DYNAMODB_TABLE)
 
 
 menu_frame = tk.Frame(app, bg='#2f3d44')
@@ -74,7 +69,7 @@ style.configure('MenuButton.TButton', background = '#2f3d44', foreground = '#C8C
 style.map('MenuButton.TButton', foreground=[('active','white')], background=[('active','#2f3d44')])
 
 
-items = tab.fetch_dynamodb_data('user_scores')
+items = tab.fetch_dynamodb_data(config.DYNAMODB_TABLE)
 
     # Create the table with fetched data
 t = tab.Table(analytics_frame, items)
@@ -86,14 +81,11 @@ interview_prep_header = ttk.Button(header_frame, style = 'MenuButton.TButton', c
 interview_prep_header.place(x=900, y=20, width=77, height=40)
 
 
-dynamodb = boto3.resource('dynamodb',  
-        aws_access_key_id="AKIAXYKJVWVOJM53ZFTL",
-        aws_secret_access_key= "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",
-        region_name='us-east-1')
-table = dynamodb.Table('user_scores')
+dynamodb = config.dynamodb_resource()
+table = dynamodb.Table(config.DYNAMODB_TABLE)
 
 # Fetch data from DynamoDB
-items = tab.fetch_dynamodb_data('user_scores')
+items = tab.fetch_dynamodb_data(config.DYNAMODB_TABLE)
 
 # Create the table with fetched data
 buttons = tk.Frame(analytics_frame)

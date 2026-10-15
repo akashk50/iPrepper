@@ -1,4 +1,4 @@
-import boto3
+import config
 from datetime import datetime
 from decimal import Decimal
 
@@ -14,10 +14,7 @@ totalEmotions = 26
 
 def get_dynamodb_headers(table_name):
     # Create a DynamoDB service client using the environment's credentials
-    dynamodb = boto3.resource('dynamodb',  
-        aws_access_key_id="AKIAXYKJVWVOJM53ZFTL",
-        aws_secret_access_key="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",
-        region_name='us-east-1')
+    dynamodb = config.dynamodb_resource()
     table = dynamodb.Table(table_name)
 
     dynamoItem = {
@@ -32,4 +29,4 @@ def get_dynamodb_headers(table_name):
     print("success!")
 
 if __name__ == "__main__":
-    get_dynamodb_headers('user_scores')
+    get_dynamodb_headers(config.DYNAMODB_TABLE)
